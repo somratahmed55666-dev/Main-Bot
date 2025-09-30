@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Cashmate Mini App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <script async="async" data-cfasync="false" src="//tg-sdk.monetag.com/js/sdk.js" data-zone-id="3058206"></script> 
+
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* ==================================== */
+        /* কাস্টম ডিজাইন CSS */
+        /* ==================================== */
+        :root {
+            --tg-theme-bg-color: #121212; 
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-link-color: #00bfff;
+            --navy-blue: #003366;
+            --dark-card: #002147; 
+            --jhilmili-gradient: linear-gradient(135deg, #1f1f1f 0%, #000000 100%);
+            --footer-bg: #000d1a; 
+            --active-color: #00bfff;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            margin: 0; 
+            background: var(--jhilmili-gradient);
+            color: var(--tg-theme-text-color); 
+            min-height: 100vh; 
+            padding-bottom: 60px;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 10px; 
+            box-sizing: border-box; 
+        }
+        h2 { color: white; padding-bottom: 5px; margin-top: 25px; font-size: 1.5em; }
+        .card { 
+            background-color: var(--dark-card);
+            padding: 15px; 
+            border-radius: 12px; 
+            margin-top: 15px; 
+            text-align: left; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            border: 1px solid #005090;
+        }
+        .main-button, .action-button, .wallet-btn { 
+            background-color: #3b5998; 
+            color: #ffffff; 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px 0;
+            width: 100%;
+            font-weight: bold;
+        }
+        .wallet-input, .number-input { 
+            width: calc(100% - 22px); 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border: 1px solid #005090; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            background-color: #0d0d0d;
+            color: #ffffff;
+        }
+        .error { color: #ff6347; margin-top: 10px; font-weight: bold; }
+        
+        /* Tab & Footer Navigation */
+        .tab-content { display: none; padding-bottom: 20px; }
+        .tab-content.active { display: block; }
+        .footer-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            background-color: var(--footer-bg);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            border-top: 1px solid #005090;
+        }
+        .footer-nav button {
+            background: none; border: none; color: var(--tg-theme-hint-color); padding: 10px 0;
+            flex-grow: 1; font-size: 14px; cursor: pointer; transition: color 0.2s;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .footer-nav button.active { color: var(--active-color); }
+        .footer-nav i { font-size: 20px; margin-bottom: 4px; }
+        
+        /* Custom Ad View Styles */
+        .ad-selection-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
+        .ad-type-btn { background-color: #0056b3; padding: 15px; border-radius: 10px; font-size: 1.2em; font-weight: bold; }
+        .ad-page-header { background-color: var(--dark-card); padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .ad-page-header h3 { margin: 0; color: #00bfff; }
+        .ad-page-header p { margin: 5px 0 0 0; color: #28a745; font-weight: bold; }
+        .ad-view-btn { 
+            background-color: #ffc107; 
+            color: black; 
+            padding: 15px 25px; 
+            font-size: 1.4em; 
+            border-radius: 10px; 
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        #main-content, #gate-screen, #admin-panel, #admin-login-screen, #ad-selection-screen, #ad-view-screen { display: none; }
+        
+        /* New Admin Login Button on Dashboard */
+        #admin-link-on-dashboard {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #ffc107;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 100;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container" style="position: relative;">
+        
+        <div id="gate-screen">
+             <h2 style="color: white;">অ্যাপটি ব্যবহার করার আগে</h2>
+            <p style="color: var(--tg-theme-hint-color);">এই অ্যাপটি ব্যবহার করার জন্য আপনাকে আমাদের টেলিগ্রাম চ্যানেলে যুক্ত হতে হবে।</p>
+            <a href="https://t.me/cashmate66" target="_blank">
+                <button class="main-button" style="background-color: #007bff;">চ্যানেলে যুক্ত হন</button>
+            </a>
+            <p style="margin-top: 20px; color: var(--tg-theme-hint-color);">যুক্ত হওয়ার পর আবার অ্যাপটি খুলুন বা **"প্রবেশ করুন"** বাটনে ক্লিক করুন।</p>
+            <button class="action-button" onclick="checkSubscriptionStatus()">প্রবেশ করুন</button>
+        </div>
+
+        <div id="admin-login-screen" style="padding-top: 50px;">
+             <h2 style="color: white;">🛡️ অ্যাডমিন প্যানেল প্রবেশ</h2>
+            <input type="password" id="admin-password" class="wallet-input" placeholder="পাসওয়ার্ড দিন">
+            <button class="main-button" onclick="attemptAdminLogin()">প্রবেশ করুন</button>
+            <p class="error" id="admin-login-error"></p>
+            <p style="margin-top: 20px;"><a href="#" onclick="hideAdminLogin(event)" style="color: #4a90e2;">ইউজার প্যানেলে ফিরে যান</a></p>
+        </div>
+        
+        <div id="main-content">
+            
+            <a href="#" id="admin-link-on-dashboard" onclick="showAdminLoginFromDashboard(event)">
+                <i class="fas fa-user-shield"></i>
+            </a>
+
+            <div id="dashboard-tab" class="tab-content active">
+                <h2>📊 ড্যাশবোর্ড</h2>
+                
+                <div class="card">
+                    <h3 style="color: white; margin-top: 0;">💵 বর্তমান অ্যাকাউন্ট স্ট্যাটাস</h3>
+                    <div class="balance-info">
+                        <div>
+                            <p style="color: var(--tg-theme-hint-color); margin: 0;">মূল ব্যালেন্স</p>
+                            <p class="value" id="current-balance">৳ 0.00</p>
+                        </div>
+                        <div style="border-left: 1px solid #003050;">
+                            <p style="color: var(--tg-theme-color); margin: 0;">রেফারেল উপার্জন</p>
+                            <p class="value" id="referral-balance-display">৳ 0.00</p>
+                        </div>
+                    </div>
+                     <button class="main-button" id="transferRefBtn" onclick="showTransferModal()" style="background-color: #6f42c1; margin-top: 15px;">রেফারেল ব্যালেন্স ট্রান্সফার</button>
+                </div>
+
+                <div class="card">
+                    <h3 style="color: white; margin-top: 0;">📹 বিজ্ঞাপন দেখুন ও উপার্জন করুন</h3>
+                    <p style="color: var(--tg-theme-hint-color);">প্রতি সফল বিজ্ঞাপনের জন্য পাবেন: ৳6</p>
+                    <button class="main-button" id="viewAdBtn" onclick="showAdSelection()" style="background-color: #28a745;">বিজ্ঞাপন দেখুন</button>
+                    <p class="error" id="ad-status" style="display: none;"></p>
+                </div>
+            </div>
+            
+            <div id="wallet-tab" class="tab-content">
+                <h2>💰 ওয়ালেট ম্যানেজমেন্ট</h2>
+                <div class="wallet-card-container">
+                    <div class="card-header">
+                        <h3>সেভ করা ওয়ালেটসমূহ</h3>
+                        <span id="wallet-count-display" style="font-size: 1.5em; font-weight: bold;">(0/3)</span>
+                    </div>
+                    <div class="withdraw-icon" onclick="showWithdrawModal()">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <ul id="wallet-list-display" class="wallet-list">
+                        <li style="color: var(--tg-theme-hint-color);">কোনো ওয়ালেট সেভ করা নেই।</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 style="color: white; margin-top: 0;">নতুন ওয়ালেট যোগ করুন</h3>
+                    <p id="wallet-status" style="margin-top: 10px; color: #4a90e2; font-weight: bold;">সর্বোচ্চ ৩টি ওয়ালেট যোগ করা যাবে।</p>
+                    <select id="payment-method" class="wallet-input">
+                        <option value="none">পেমেন্ট মাধ্যম নির্বাচন করুন</option>
+                        <option value="bkash">বিকাশ</option>
+                        <option value="nagad">নগদ</option>
+                    </select>
+                    <input type="tel" id="wallet-number-input" class="number-input" 
+                        placeholder="01XXXXXXXXX" 
+                        value="+88" 
+                        maxlength="14" 
+                        oninput="enforceWalletInput(this)"
+                        required>
+                    <button class="wallet-btn" onclick="addWallet()" style="background-color: #00bfff;">ওয়ালেট যোগ করুন</button>
+                </div>
+            </div>
+
+            <div id="referral-tab" class="tab-content">
+                <h2>🤝 আপনার রেফারেল</h2>
+                <div class="card">
+                    <p style="color: var(--tg-theme-hint-color);">আপনার রেফারেল কোড: <span id="user-referral-code" style="color: #00bfff; font-weight: bold;">Loading...</span></p>
+                    <p style="color: var(--tg-theme-hint-color);">আপনার **ইউনিক রেফারেল লিংক**:</p>
+                    <span id="user-referral-link-display" style="display: block; margin: 10px 0; padding: 10px; border: 1px dashed #4a90e2; word-wrap: break-word;">Loading...</span>
+                    <button class="action-button" onclick="copyReferralLink()" style="background-color: #6f42c1;">লিংক কপি করুন</button>
+                    <p>মোট রেফারেল: <span id="current-referrals" style="color: #00bfff; font-weight: bold;">0</span> জন</p>
+                    <p>প্রতি রেফারেলের জন্য পাবেন: <span style="font-weight: bold; color: #00bfff;">৳24</span> (উইথড্রলের সময়)</p>
+                    <p style="color: #ff6347;">উইথড্র করার জন্য **আরো <span id="ref-needed" style="font-weight: bold;">23</span> টি** রেফারেল প্রয়োজন।</p>
+                </div>
+            </div>
+
+
+            <div id="withdraw-modal" style="display: none; padding-top: 20px;">
+                <div class="card" style="background-color: #003050;">
+                    <h2 style="color: white; margin-top: 0;">💸 উইথড্রয়াল রিকুয়েস্ট</h2>
+                    <p style="color: var(--tg-theme-hint-color);">নূন্যতম উইথড্র: ৳500 | সর্বোচ্চ উইথড্র: ৳1000</p>
+                    <label for="withdraw-wallet-select" style="display: block; margin-bottom: 5px;">পেমেন্ট ওয়ালেট নির্বাচন করুন:</label>
+                    <select id="withdraw-wallet-select" class="wallet-input">
+                        <option value="none">প্রথমে ওয়ালেট সেভ করুন</option>
+                    </select>
+                    <input type="number" id="withdraw-amount" class="wallet-input" placeholder="উইথড্র পরিমাণ (৳500-৳1000)">
+                    <p class="error" id="withdraw-error"></p>
+                    <button class="wallet-btn" onclick="requestWithdrawal()" style="background-color: #ffc107; color: black;">উইথড্র রিকুয়েস্ট করুন</button>
+                    <button class="wallet-btn" onclick="hideWithdrawModal()" style="background-color: #dc3545; margin-top: 10px;">বন্ধ করুন</button>
+                </div>
+            </div>
+
+            <div id="transfer-modal" style="display: none; padding-top: 20px;">
+                <div class="card" style="background-color: #003050;">
+                    <h2 style="color: white; margin-top: 0;">🔄 রেফারেল ব্যালেন্স ট্রান্সফার</h2>
+                    <p style="color: var(--tg-theme-hint-color);">আপনার রেফারেল ব্যালেন্স: <span id="ref-current-balance" style="color: #00bfff; font-weight: bold;">৳ 0.00</span></p>
+                    <p style="color: #ff6347;">**নোট:** ট্রান্সফার করার জন্য কোনো রিকোয়ারমেন্ট নেই।</p>
+                    
+                    <input type="number" id="transfer-amount-input" class="wallet-input" placeholder="ট্রান্সফার করার পরিমাণ">
+                    <p class="error" id="transfer-error"></p>
+                    <button class="wallet-btn" onclick="transferReferralBalance()" style="background-color: #6f42c1;">ট্রান্সফার করুন</button>
+                    <button class="wallet-btn" onclick="hideTransferModal()" style="background-color: #dc3545; margin-top: 10px;">বন্ধ করুন</button>
+                </div>
+            </div>
+            
+            <div class="footer-nav">
+                <button id="nav-dashboard" class="active" onclick="switchTab('dashboard')">
+                    <i class="fas fa-home"></i> ড্যাশবোর্ড
+                </button>
+                <button id="nav-wallet" onclick="switchTab('wallet')">
+                    <i class="fas fa-wallet"></i> ওয়ালেট
+                </button>
+                <button id="nav-referral" onclick="switchTab('referral')">
+                    <i class="fas fa-users"></i> রেফারেল
+                </button>
+            </div>
+        </div>
+        
+        <div id="admin-panel">
+            <h1>🛡️ অ্যাডমিন ড্যাশবোর্ড</h1>
+            <div class="card" style="background-color: #1e1e1e;">
+                <button class="action-button" onclick="loadWithdrawals()">উইথড্র রিকুয়েস্ট রিফ্রেশ করুন</button>
+                <h2 style="margin-top: 15px;">উইথড্র রিকোয়েস্টসমূহ</h2>
+                <div style="background-color: #121212; padding: 10px; border-radius: 8px;">
+                    <ul id="withdrawal-requests" style="list-style: none; padding: 0;">
+                        <li style="color: var(--tg-theme-hint-color);">কোনো রিকোয়েস্ট নেই।</li>
+                    </ul>
+                </div>
+            </div>
+            <p style="margin-top: 20px;"><a href="#" onclick="hideAdminPanel(event)" style="color: #4a90e2;">ইউজার প্যানেলে ফিরে যান</a></p>
+        </div>
+
+        <div id="ad-selection-screen">
+            <h2>📹 বিজ্ঞাপন প্ল্যাটফর্ম নির্বাচন করুন</h2>
+            <div class="ad-selection-grid">
+                <button class="ad-type-btn" onclick="showAdView('monetag')">
+                    <i class="fas fa-play-circle"></i> **Monetag Ad** (৳6)
+                </button>
+                <button class="ad-type-btn" onclick="showAdView('google')">
+                    <i class="fab fa-google"></i> Google Ad (৳6) - ডেমো
+                </button>
+                <button class="ad-type-btn" onclick="showAdView('adstera')">
+                    <i class="fas fa-ad"></i> Adsterra Ad (৳6) - ডেমো
+                </button>
+            </div>
+            <button class="action-button" onclick="resetAdViewAndGoToDashboard()" style="background-color: #dc3545; margin-top: 30px;">ফিরে যান</button>
+        </div>
+
+        <div id="ad-view-screen">
+             <div class="ad-page-header">
+                <h3 id="ad-header-title">Ad Provider Name</h3>
+                <p id="ad-header-payout">প্রতি অ্যাড ৳6</p>
+            </div>
+            <p style="color: var(--tg-theme-hint-color);">**বিজ্ঞাপন দেখা শেষ হলে বা বন্ধ করলে আপনার ব্যালেন্স যোগ হবে।**</p>
+
+            <button class="ad-view-btn" id="ad-show-button" onclick="startAdProcess()">
+                বিজ্ঞাপন শুরু করুন
+            </button>
+            <p class="error" id="ad-view-status" style="display: none;"></p>
+
+            <button class="action-button" onclick="resetAdViewAndGoToDashboard()" style="background-color: #dc3545; margin-top: 30px;">ফিরে যান</button>
+        </div>
+
+    </div>
+
+    <script>
+        // ======================================================
+        // FIREBASE INITIALIZATION & CONFIG
+        // ======================================================
+        const firebaseConfig = {
+            // 🔥 আপনার Firebase API Key 
+            apiKey: "AIzaSyCQiJMQrW-nxbF10TcPzyKnsVoqW4QKnJg", 
+            authDomain: "cash-mate-3dccc.firebaseapp.com",
+            projectId: "cash-mate-3dccc",
+            databaseURL: "https://cash-mate-3dccc-default-rtdb.asia-southeast1.firebasedatabase.app",
+            storageBucket: "cash-mate-3dccc.firebasestorage.app",
+            messagingSenderId: "927592872113",
+            appId: "1:927592872113:web:ad6d90632d2b7585c20a90",
+            measurementId: "G-C4JNW950XL"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database(app); 
+        const dbRefFunc = database.ref.bind(database);
+        
+        // ======================================================
+        // কনফিগারেশন ও গ্লোবাল ভ্যারিয়েবল (⚠️ এগুলো পরিবর্তন করুন)
+        // ======================================================
+        const YOUR_BOT_USERNAME = "cash_mate1_bot"; 
+        const ADMIN_TELEGRAM_ID = "7156752824"; // 🟢 আপনার অ্যাডমিন টেলিগ্রাম ID
+        const ADMIN_PASSWORD = "Nokia123456";
+        const MONETAG_ZONE_ID = "3058206"; // 🟢 আপনার Monetag Zone ID
+        
+        // ⚠️ আপনার Adsterra/Google Direct Link এখানে বসান 
+        const GOOGLE_AD_LINK = "https://somratahmed55666-dev.github.io/Main-Bot/"; 
+        const ADSTERRA_DIRECT_LINK = "https://somratahmed55666-dev.github.io/Main-Bot/"; 
+        
+        const SUBSCRIPTION_KEY = 'cashmate_subscribed'; // LocalStorage Key
+
+        const MIN_REFERRALS_FOR_WITHDRAW = 23;
+        const EARN_PER_AD = 6; 
+        const EARN_PER_REFERRAL = 24;
+        const MIN_WITHDRAW = 500; 
+        const MAX_WITHDRAW = 1000; 
+        const MAX_WALLETS = 3; 
+
+        let tgUserId = null; 
+        let userData = { balance: 0, referrals: 0, wallets: [] }; 
+        let dbRef = null; 
+        let adWatchedSuccessfully = false; 
+        let currentAdProvider = '';
+
+        // ======================================================
+        // CORE FIREBASE & ডেটা সেভিং লজিক
+        // ======================================================
+
+        function createAutoReferralID(newUserId) {
+             const userRef = dbRefFunc('user_id_map');
+             userRef.child(newUserId).once('value', (snapshot) => {
+                 if (!snapshot.exists()) {
+                     const countRef = dbRefFunc('user_count');
+                     countRef.transaction((currentCount) => {
+                         const nextId = (currentCount || 0) + 1;
+                         userRef.child(newUserId).set(nextId);
+                         return nextId;
+                     }, (error, committed, snapshot) => {
+                         if (error) { console.error("Referral ID creation failed:", error); }
+                         else if (committed) { updateUI(); } // সফল হলে UI আপডেট
+                     });
+                 } else {
+                     updateUI(); // আইডি আগে থেকেই থাকলে UI আপডেট
+                 }
+             });
+        }
+        
+        function initializeFirebase() {
+            if (!tgUserId) return; 
+            dbRef = dbRefFunc('users/' + tgUserId);
+            
+            // 🔥 ফিক্স: রেফারেল লিংক নিশ্চিত করার জন্য সব সময় চেক করা হচ্ছে
+            createAutoReferralID(tgUserId); 
+            
+            dbRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    userData = {
+                        balance: data.balance || 0,
+                        referrals: data.referrals || 0,
+                        wallets: data.wallets || [] 
+                    };
+                    updateUI(); 
+                } else {
+                    dbRef.set(userData).then(() => {
+                        // createAutoReferralID কলটি উপরে সরানো হয়েছে
+                        updateUI();
+                    });
+                }
+                
+                 dbRef.on('value', (snap) => {
+                    const latestData = snap.val();
+                    if(latestData) {
+                        userData = {
+                            balance: latestData.balance || 0,
+                            referrals: latestData.referrals || 0,
+                            wallets: latestData.wallets || [] 
+                        };
+                        updateUI(); 
+                    }
+                 });
+            }).catch(error => {
+                console.error("Firebase initial load failed:", error);
+                Telegram.WebApp.showAlert("ডেটা লোড করতে সমস্যা হচ্ছে। ইন্টারনেট সংযোগ পরীক্ষা করুন।");
+            });
+        }
+        
+        window.saveUserData = function() {
+            if (dbRef) {
+                dbRef.update(userData)
+                    .catch((error) => console.error("Data save failed:", error));
+            }
+        }
+        
+        // ======================================================
+        // বিজ্ঞাপন নির্বাচন ও ভিউ লজিক (Monetag ইন্টিগ্রেশন সহ)
+        // ======================================================
+
+        window.showAdSelection = function() {
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('ad-selection-screen').style.display = 'block';
+            Telegram.WebApp.ready();
+        }
+
+        window.showAdView = function(provider) {
+            currentAdProvider = provider;
+            document.getElementById('ad-selection-screen').style.display = 'none';
+            document.getElementById('ad-view-screen').style.display = 'block';
+            
+            let title = '';
+            let btnText = 'বিজ্ঞাপন শুরু করুন';
+            
+            if (provider === 'monetag') {
+                title = 'Monetag Ad দেখুন (Rewarded Interstitial)';
+            } else if (provider === 'google') {
+                title = 'Google Ad দেখুন';
+                btnText = 'Google Ad-এর জন্য নতুন ট্যাব খুলুন';
+            } else if (provider === 'adstera') {
+                title = 'Adsterra Ad দেখুন';
+                btnText = 'Adsterra Ad-এর জন্য নতুন ট্যাব খুলুন';
+            }
+
+            document.getElementById('ad-header-title').textContent = title;
+            document.getElementById('ad-show-button').textContent = btnText;
+            document.getElementById('ad-show-button').disabled = false;
+            document.getElementById('ad-view-status').style.display = 'none';
+            
+            Telegram.WebApp.ready();
+        }
+        
+        window.resetAdViewAndGoToDashboard = function() {
+            document.getElementById('ad-view-screen').style.display = 'none';
+            document.getElementById('ad-selection-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            switchTab('dashboard');
+        }
+
+        function addBalanceAfterAd(isSuccess = true) {
+            const adStatusElement = document.getElementById('ad-view-status');
+            
+            if (isSuccess) {
+                 userData.balance += EARN_PER_AD;
+                 saveUserData();
+                 Telegram.WebApp.showAlert(`৳${EARN_PER_AD} আপনার অ্যাকাউন্টে যোগ করা হয়েছে!`);
+                 adStatusElement.textContent = `সফল! ৳${EARN_PER_AD} যোগ করা হয়েছে।`;
+                 adStatusElement.style.color = '#28a745';
+            } else {
+                 Telegram.WebApp.showAlert("বিজ্ঞাপন পুরোপুরি না দেখলে বা ত্রুটির কারণে ব্যালেন্স যোগ হয়নি।");
+                 adStatusElement.textContent = `ব্যর্থ! ব্যালেন্স যোগ হয়নি। আবার চেষ্টা করুন।`;
+                 adStatusElement.style.color = '#ff6347';
+            }
+            adStatusElement.style.display = 'block';
+            document.getElementById('ad-show-button').disabled = false;
+        }
+
+        window.startAdProcess = function() { 
+            const adStatusElement = document.getElementById('ad-view-status');
+            document.getElementById('ad-show-button').disabled = true;
+            adStatusElement.textContent = 'বিজ্ঞাপন লোড হচ্ছে...';
+            adStatusElement.style.display = 'block';
+            adStatusElement.style.color = '#00bfff';
+
+            if (currentAdProvider === 'monetag') {
+                // নিশ্চিত করুন যে Monetag SDK লোড হয়েছে এবং ফাংশনটি বিদ্যমান
+                if (window.Monetag && window.Monetag.adverts) {
+                     // 🟢 Monetag Rewarded Interstitial লজিক
+                    Monetag.adverts.show({
+                        type: 'interstitial' 
+                    })
+                    .then(function() {
+                        // 🔥 সফলভাবে অ্যাড দেখা শেষ হলে এই ব্লকটি এক্সিকিউট হবে।
+                        addBalanceAfterAd(true); // ব্যালেন্স যোগ করার ফাংশন
+                        document.getElementById('ad-show-button').disabled = false;
+                    })
+                    .catch(function(error) {
+                        // অ্যাড লোড হয়নি বা কোনো এরর হয়েছে (যেমন: ইউজার অ্যাড বন্ধ করে দিয়েছে)
+                        console.error("Monetag Ad Error:", error);
+                        
+                        // অ্যাড ফেইল করলে কোনো পুরষ্কার দেওয়া হবে না।
+                        addBalanceAfterAd(false); 
+                        
+                        adStatusElement.textContent = `Monetag ত্রুটি: বিজ্ঞাপন দেখাতে ব্যর্থ। আবার চেষ্টা করুন।`;
+                        adStatusElement.style.color = '#ff6347';
+                        document.getElementById('ad-show-button').disabled = false;
+                    });
+                } else {
+                     // Monetag SDK লোড না হলে ডেমো লজিক
+                     setTimeout(() => { addBalanceAfterAd(true); }, 5000); 
+                     adStatusElement.textContent = 'Monetag SDK লোড হয়নি। ডেমো ব্যালেন্স ৫ সেকেন্ড পর যোগ হচ্ছে...';
+                }
+            } else if (currentAdProvider === 'google' || currentAdProvider === 'adstera') {
+                let link = currentAdProvider === 'google' ? GOOGLE_AD_LINK : ADSTERRA_DIRECT_LINK;
+                
+                // ⚠️ নতুন ট্যাবে লিংক ওপেন করা হচ্ছে। (Direct Link-এর জন্য)
+                window.open(link, '_blank');
+                
+                adStatusElement.textContent = 'নতুন ট্যাবে বিজ্ঞাপন ওপেন হয়েছে। ৫ সেকেন্ড পর ব্যালেন্স যোগ হবে।';
+                setTimeout(() => {
+                    addBalanceAfterAd(true);
+                }, 5000); // 5 সেকেন্ড পর ব্যালেন্স যোগের ডেমো লজিক
+
+            } else {
+                adStatusElement.textContent = 'অজানা বিজ্ঞাপন প্রোভাইডার।';
+                document.getElementById('ad-show-button').disabled = false;
+            }
+        }
+        
+        // ======================================================
+        // রেফারেল ব্যালেন্স ট্রান্সফার লজিক
+        // ======================================================
+
+        window.showTransferModal = function() {
+            const refBalance = userData.referrals * EARN_PER_REFERRAL;
+            document.getElementById('ref-current-balance').textContent = `৳ ${refBalance.toFixed(2)}`;
+            document.getElementById('transfer-modal').style.display = 'block';
+            
+            // মেইন কন্টেন্ট এবং ফুটার নেভিগেশন হাইড করা
+            document.getElementById('dashboard-tab').classList.remove('active');
+            document.getElementById('nav-dashboard').classList.remove('active');
+        }
+
+        window.hideTransferModal = function() {
+            document.getElementById('transfer-modal').style.display = 'none';
+            document.getElementById('transfer-amount-input').value = '';
+            document.getElementById('transfer-error').textContent = '';
+            switchTab('dashboard'); 
+        }
+
+        window.transferReferralBalance = function() {
+            const amount = parseFloat(document.getElementById('transfer-amount-input').value);
+            const refBalance = userData.referrals * EARN_PER_REFERRAL;
+            const errorBox = document.getElementById('transfer-error');
+            errorBox.textContent = '';
+
+            if (isNaN(amount) || amount <= 0) { errorBox.textContent = 'সঠিক পরিমাণ দিন।'; return; }
+            if (amount > refBalance) { errorBox.textContent = 'পর্যাপ্ত রেফারেল ব্যালেন্স নেই।'; return; }
+
+            // রেফারেল কাউন্ট থেকে টাকা তুলে নেওয়া (টাকার হিসাবে)
+            const referralsToDeduct = amount / EARN_PER_REFERRAL;
+            
+            if (referralsToDeduct > userData.referrals) {
+                errorBox.textContent = 'হিসাবের গরমিল। রেফারেল ব্যালেন্স থেকে বেশি ট্রান্সফার করা যাচ্ছে না।'; return;
+            }
+            
+            // 🔥 মূল পরিবর্তন: ব্যালেন্স যোগ ও রেফারেল কাউন্ট কমানো
+            userData.balance += amount; 
+            userData.referrals -= referralsToDeduct; 
+            
+            userData.referrals = Math.max(0, userData.referrals); // নেগেটিভ হওয়া আটকানো
+
+            saveUserData();
+            Telegram.WebApp.showAlert(`৳${amount.toFixed(2)} রেফারেল ব্যালেন্স থেকে মূল ব্যালেন্সে সফলভাবে ট্রান্সফার করা হয়েছে!`);
+            hideTransferModal();
+        }
+
+        // ======================================================
+        // UI এবং ইনিশিয়ালাইজেশন ফাংশন 
+        // ======================================================
+
+        window.switchTab = function(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => { tab.classList.remove('active'); });
+            document.querySelectorAll('.footer-nav button').forEach(btn => { btn.classList.remove('active'); });
+            document.querySelectorAll('div[id$="-screen"]').forEach(screen => { screen.style.display = 'none'; }); // সব স্ক্রিন লুকানো
+            
+            document.getElementById('main-content').style.display = 'block'; // মেইন কন্টেন্ট দেখানো
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            document.getElementById(`nav-${tabName}`).classList.add('active');
+            
+            Telegram.WebApp.ready();
+        }
+
+        window.updateUI = function() {
+            const refBalance = userData.referrals * EARN_PER_REFERRAL;
+            document.getElementById('current-balance').textContent = `৳ ${userData.balance.toFixed(2)}`;
+            document.getElementById('referral-balance-display').textContent = `৳ ${refBalance.toFixed(2)}`;
+            document.getElementById('current-referrals').textContent = Math.floor(userData.referrals); 
+            
+            const remainingRefs = Math.max(0, MIN_REFERRALS_FOR_WITHDRAW - Math.floor(userData.referrals));
+            document.getElementById('ref-needed').textContent = remainingRefs;
+            
+            // 🔥 রেফারেল লিংক তৈরি ও ডিসপ্লে (সঠিক ইউজারনেম ব্যবহার করে)
+            dbRefFunc('user_id_map/' + tgUserId).once('value').then(snapshot => {
+                const sequentialId = snapshot.val();
+                if (sequentialId) {
+                    const botUsernameClean = YOUR_BOT_USERNAME.startsWith('@') ? YOUR_BOT_USERNAME.substring(1) : YOUR_BOT_USERNAME;
+                    const customLink = `https://t.me/${botUsernameClean}?start=${sequentialId}`;
+                    document.getElementById('user-referral-link-display').textContent = customLink;
+                } else {
+                     document.getElementById('user-referral-link-display').textContent = 'লিংক লোড হচ্ছে... (আবার চেষ্টা করুন)';
+                }
+            });
+
+            // Wallet UI Update Logic...
+            const listDisplay = document.getElementById('wallet-list-display');
+            const selectWithdrawal = document.getElementById('withdraw-wallet-select');
+            listDisplay.innerHTML = '';
+            selectWithdrawal.innerHTML = '<option value="none">পেমেন্ট ওয়ালেট নির্বাচন করুন</option>';
+
+            document.getElementById('wallet-count-display').textContent = `(${userData.wallets.length}/${MAX_WALLETS})`;
+
+            if (userData.wallets.length === 0) {
+                listDisplay.innerHTML = '<li style="color: var(--tg-theme-hint-color);">কোনো ওয়ালেট সেভ করা নেই।</li>';
+            } else {
+                userData.wallets.forEach((wallet, index) => {
+                    const listItem = document.createElement('li');
+                    const fullNumber = '+88' + wallet.number;
+                    const maskedNumber = `${fullNumber.substring(0, 8)} **** ${fullNumber.substring(12)}`; 
+                    listItem.innerHTML = `<strong>${wallet.method.toUpperCase()}</strong>: <span class="wallet-number-display">${maskedNumber}</span>
+                        <button class="delete-btn" onclick="deleteWallet(${index})">মুছে ফেলুন</button>`;
+                    listDisplay.appendChild(listItem);
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${wallet.method.toUpperCase()} (${maskedNumber})`;
+                    selectWithdrawal.appendChild(option);
+                });
+            }
+
+            const statusBox = document.getElementById('wallet-status');
+            if (userData.wallets.length >= MAX_WALLETS) {
+                 statusBox.textContent = `আপনি ইতিমধ্যে সর্বোচ্চ (${MAX_WALLETS}টি) ওয়ালেট যোগ করেছেন।`;
+                 statusBox.style.color = '#ff6347';
+            } else {
+                 statusBox.textContent = `আপনি আরও ${MAX_WALLETS - userData.wallets.length}টি ওয়ালেট যোগ করতে পারবেন।`;
+                 statusBox.style.color = '#4a90e2';
+            }
+        }
+        
+        window.enforceWalletInput = function(input) { 
+             let value = input.value;
+            if (!value.startsWith('+88')) {
+                let cleaned = value.replace(/[^0-9]/g, '');
+                value = '+88' + cleaned;
+            }
+            if (value.length > 14) {
+                value = value.substring(0, 14);
+            }
+            if (value.length > 3) {
+                let prefix = value.substring(0, 3);
+                let numberPart = value.substring(3).replace(/[^0-9]/g, '');
+                value = prefix + numberPart;
+            }
+             if (value.length < 3) {
+                value = '+88';
+            }
+            input.value = value;
+        }
+
+        window.addWallet = function() { 
+            const method = document.getElementById('payment-method').value;
+            let fullNumber = document.getElementById('wallet-number-input').value.trim();
+            const statusBox = document.getElementById('wallet-status');
+            if (userData.wallets.length >= MAX_WALLETS) {
+                 Telegram.WebApp.showAlert(`আপনি সর্বোচ্চ ${MAX_WALLETS}টি ওয়ালেট যোগ করতে পারবেন।`);
+                 return;
+            }
+            if (method === 'none') { statusBox.textContent = 'পেমেন্ট মাধ্যম নির্বাচন করুন।'; statusBox.style.color = '#ff6347'; return; }
+            if (fullNumber.length !== 14 || !fullNumber.startsWith('+88')) {
+                 statusBox.textContent = 'দয়া করে +88 এর পরে ১১-ডিজিটের মোবাইল নম্বর দিন। মোট অক্ষর ১৪টি হতে হবে।'; 
+                 statusBox.style.color = '#ff6347'; 
+                 return;
+            }
+            let numberToSave = fullNumber.substring(3);
+            const exists = userData.wallets.some(w => w.number === numberToSave && w.method === method);
+            if (exists) {
+                statusBox.textContent = 'এই ওয়ালেটটি ইতিমধ্যে যোগ করা আছে।'; statusBox.style.color = '#ff6347'; return;
+            }
+            const newWallet = { method: method, number: numberToSave };
+            userData.wallets.push(newWallet);
+            saveUserData();
+            document.getElementById('wallet-number-input').value = '+88';
+            document.getElementById('payment-method').value = 'none';
+            Telegram.WebApp.showAlert(`${method} ওয়ালেট সফলভাবে যোগ করা হয়েছে!`);
+        }
+        
+        window.deleteWallet = function(index) { 
+            if (confirm("আপনি কি নিশ্চিত যে এই ওয়ালেটটি মুছে ফেলবেন?")) {
+                userData.wallets.splice(index, 1);
+                saveUserData();
+                Telegram.WebApp.showAlert('ওয়ালেট সফলভাবে মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        window.requestWithdrawal = function() { 
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            const selectedIndex = document.getElementById('withdraw-wallet-select').value;
+            const errorBox = document.getElementById('withdraw-error');
+            errorBox.textContent = '';
+            
+            if (selectedIndex === 'none' || !userData.wallets[selectedIndex]) { errorBox.textContent = 'উইথড্র করার জন্য একটি ওয়ালেট নির্বাচন করুন।'; return; }
+            if (userData.referrals < MIN_REFERRALS_FOR_WITHDRAW) { errorBox.textContent = `উইথড্র করতে ${MIN_REFERRALS_FOR_WITHDRAW} টি রেফারেল প্রয়োজন।`; return; }
+            if (amount > userData.balance) { errorBox.textContent = 'পর্যাপ্ত ব্যালেন্স নেই।'; return; }
+            if (amount < MIN_WITHDRAW || amount > MAX_WITHDRAW) { errorBox.textContent = `৳${MIN_WITHDRAW} থেকে ৳${MAX_WITHDRAW}-এর মধ্যে হতে হবে।`; return; }
+
+            const selectedWallet = userData.wallets[selectedIndex];
+            userData.balance -= amount;
+            saveUserData(); 
+
+            const withdrawalData = {
+                userId: tgUserId,
+                amount: amount,
+                wallet: selectedWallet,
+                timestamp: new Date().toISOString(),
+                status: 'Pending'
+            };
+            const withdrawRef = dbRefFunc('withdrawals/' + Date.now());
+            withdrawRef.set(withdrawalData); 
+            Telegram.WebApp.showAlert(`৳${amount} উইথড্র রিকুয়েস্ট সফল হয়েছে!`);
+            hideWithdrawModal();
+        }
+
+        window.copyReferralLink = function() { 
+            const link = document.getElementById('user-referral-link-display').textContent;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(link).then(() => {
+                    Telegram.WebApp.showAlert("রেফারেল লিংক কপি করা হয়েছে!");
+                });
+            } else {
+                Telegram.WebApp.showAlert("কপি করতে ব্যর্থ: ডিভাইস সাপোর্ট করে না।");
+            }
+        }
+
+        window.showWithdrawModal = function() { 
+            document.getElementById('withdraw-modal').style.display = 'block';
+            document.getElementById('dashboard-tab').classList.remove('active');
+            document.getElementById('wallet-tab').classList.remove('active');
+            document.getElementById('referral-tab').classList.remove('active');
+            Telegram.WebApp.ready();
+        }
+
+        window.hideWithdrawModal = function() { 
+            document.getElementById('withdraw-modal').style.display = 'none';
+            switchTab('wallet');
+        }
+
+        // ======================================================
+        // অ্যাডমিন প্যানেল লজিক
+        // ======================================================
+
+        window.showAdminLoginFromDashboard = function(e) { 
+             e.preventDefault(); 
+             document.getElementById('main-content').style.display = 'none'; 
+             document.getElementById('admin-login-screen').style.display = 'block'; 
+        }
+
+        window.showAdminLogin = function(e) { 
+             e.preventDefault(); 
+             document.getElementById('gate-screen').style.display = 'none'; 
+             document.getElementById('admin-login-screen').style.display = 'block'; 
+        }
+
+        window.hideAdminLogin = function(e) { 
+             e.preventDefault(); 
+             document.getElementById('admin-login-screen').style.display = 'none'; 
+             
+             // যদি সাবস্ক্রাইব করা থাকে তবে মেইন কন্টেন্ট দেখাবে, না হলে গেট স্ক্রিন
+             if(localStorage.getItem(SUBSCRIPTION_KEY) === tgUserId) {
+                 document.getElementById('main-content').style.display = 'block';
+                 switchTab('dashboard');
+             } else {
+                 document.getElementById('gate-screen').style.display = 'block';
+             }
+        }
+        
+        window.hideAdminPanel = function(e) {
+             e.preventDefault();
+             document.getElementById('admin-panel').style.display = 'none';
+             document.getElementById('main-content').style.display = 'block';
+             switchTab('dashboard');
+        }
+
+        window.attemptAdminLogin = function() {
+            const password = document.getElementById('admin-password').value;
+            const errorBox = document.getElementById('admin-login-error');
+            errorBox.textContent = '';
+            
+            if (password !== ADMIN_PASSWORD) { errorBox.textContent = 'পাসওয়ার্ড ভুল।'; return; }
+            if (tgUserId !== ADMIN_TELEGRAM_ID) { errorBox.textContent = `আপনি অ্যাডমিন নন।`; return; }
+            
+            document.getElementById('admin-login-screen').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+            Telegram.WebApp.showAlert('অ্যাডমিন প্যানেলে স্বাগতম!');
+            loadWithdrawals(); 
+        }
+
+        window.loadWithdrawals = function() { 
+            const listElement = document.getElementById('withdrawal-requests');
+            listElement.innerHTML = '<li>রিকোয়েস্ট লোড হচ্ছে...</li>';
+            
+            const withdrawRef = dbRefFunc('withdrawals');
+            withdrawRef.once('value').then((snapshot) => {
+                const requests = snapshot.val();
+                listElement.innerHTML = ''; 
+                if (!requests) { listElement.innerHTML = '<li style="color: white;">এই মুহূর্তে কোনো উইথড্র রিকোয়েস্ট নেই।</li>'; return; }
+                
+                Object.keys(requests).reverse().forEach(key => {
+                    const req = requests[key];
+                    if (req.status !== 'Pending') return;
+                    const listItem = document.createElement('li');
+                    listItem.style.color = 'white'; 
+                    listItem.innerHTML = `
+                        <strong>ID: ${req.userId}</strong> | ৳${req.amount} (${req.wallet.method})<br>
+                        Number: +88${req.wallet.number} | Time: ${new Date(req.timestamp).toLocaleString('bn-BD')}
+                        <button class="action-btn" onclick="processWithdraw('${key}', 'Paid')" style="background-color: #28a745; color: white; margin-left: 10px;">Paid Mark করুন</button>
+                    `;
+                    listElement.appendChild(listItem);
+                });
+                if (listElement.childElementCount === 0) { listElement.innerHTML = '<li style="color: white;">এই মুহূর্তে কোনো Pending রিকোয়েস্ট নেই।</li>'; }
+            }).catch(e => { listElement.innerHTML = `<li class="error">ডেটা লোড করতে ব্যর্থ: ${e.message}</li>`; });
+        }
+        
+        window.processWithdraw = function(key, newStatus) { 
+            const withdrawRef = dbRefFunc('withdrawals/' + key);
+            withdrawRef.update({ status: newStatus, processedAt: new Date().toISOString() })
+                .then(() => {
+                    Telegram.WebApp.showAlert(`রিকোয়েস্ট ${key} কে ${newStatus} হিসেবে মার্ক করা হয়েছে।`);
+                    loadWithdrawals(); 
+                });
+        }
+        
+        // ======================================================
+        // ইনিশিয়াল লোড লজিক
+        // ======================================================
+
+        window.checkSubscriptionStatus = function() { 
+            // এই ফাংশনটি এখন শুধুমাত্র গেট স্ক্রিন থেকে "প্রবেশ করুন" বাটনে ক্লিক করলে কল হবে।
+            document.getElementById('gate-screen').style.display = 'none';
+            
+            // 🔥 ডেমো লজিক: ধরে নেওয়া হচ্ছে সাবস্ক্রিপশন সফল
+            localStorage.setItem(SUBSCRIPTION_KEY, tgUserId); 
+            
+            if (tgUserId === ADMIN_TELEGRAM_ID) {
+                document.getElementById('admin-login-screen').style.display = 'block';
+                return; 
+            }
+            
+            document.getElementById('main-content').style.display = 'block';
+            switchTab('dashboard');
+            initializeFirebase(); 
+        }
+        
+        function initialLoad() {
+            if (window.Telegram && window.Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+                tgUserId = Telegram.WebApp.initDataUnsafe.user.id.toString(); 
+                document.getElementById('user-referral-code').textContent = tgUserId;
+            } else {
+                 // Non-Telegram Environment (Development/Demo)
+                 tgUserId = "DEMO_USER_12345";
+            }
+            
+            // 1. অ্যাডমিন চেক
+            if (tgUserId === ADMIN_TELEGRAM_ID) {
+                document.getElementById('admin-link-on-dashboard').style.display = 'block';
+                document.getElementById('admin-link-on-dashboard').textContent = '🛡️ এডমিন'; // অ্যাডমিনকে সহজে চেনার জন্য
+            } else {
+                document.getElementById('admin-link-on-dashboard').style.display = 'none'; // সাধারণ ইউজারের জন্য হাইড
+            }
+            
+            // 2. লোকাল স্টোরেজ চেক
+            const subscribedUser = localStorage.getItem(SUBSCRIPTION_KEY);
+            
+            if (subscribedUser === tgUserId) {
+                // পূর্বে সাবস্ক্রাইব করা থাকলে, সরাসরি ড্যাশবোর্ড লোড
+                document.getElementById('main-content').style.display = 'block';
+                switchTab('dashboard');
+                initializeFirebase();
+            } else {
+                // প্রথমবার বা স্ট্যাটাস ভুলে গেলে, গেট স্ক্রিন দেখাও
+                document.getElementById('gate-screen').style.display = 'block';
+            }
+            Telegram.WebApp.ready();
+        }
+
+        // Initial load check
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            initialLoad();
+        } else {
+             // Non-Telegram Environment
+             initialLoad();
+        }
+    </script>
+</body>
+</html>
